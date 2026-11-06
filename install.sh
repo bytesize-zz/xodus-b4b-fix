@@ -39,7 +39,7 @@ fi
 echo -e "${GREEN}Xodus B4B:${NC} $B4B_DIR"
 XODUS_DIR="$(dirname "$B4B_DIR")"
 
-# ── Detect Steam B4B (for verification only) ──
+# ── Detect Steam B4B (optional, for ID verification) ──
 STEAM_B4B=""
 for candidate in \
     "$HOME/.local/share/Steam/steamapps/common/Back 4 Blood"; do
@@ -50,27 +50,27 @@ for candidate in \
 done
 
 if [ -n "$STEAM_B4B" ]; then
-    echo -e "${GREEN}Steam B4B:${NC} $STEAM_B4B"
-
-    # Verify deployment IDs match
+    echo -e "${GREEN}Steam B4B found:${NC} $STEAM_B4B"
     XODUS_PID=$(grep -o '"productid"[^"]*"[^"]*"' "$B4B_DIR/EasyAntiCheat/Settings.json" | grep -o '"[^"]*"$' | tr -d '"')
     STEAM_PID=$(grep -o '"productid"[^"]*"[^"]*"' "$STEAM_B4B/EasyAntiCheat/Settings.json" | grep -o '"[^"]*"$' | tr -d '"')
-
     if [ "$XODUS_PID" = "$STEAM_PID" ]; then
         echo -e "${GREEN}EAC deployment IDs match.${NC}"
     else
-        echo -e "${RED}WARNING: deployment IDs differ! Fix may not work.${NC}"
+        echo -e "${YELLOW}Note: deployment IDs differ (expected for cross-store).${NC}"
     fi
-
-    # Copy EAC files from Steam to local files/ dir
-    mkdir -p "$SCRIPT_DIR/files"
-    cp "$STEAM_B4B/EasyAntiCheat/Certificates/runtime.conf" "$SCRIPT_DIR/files/"
-    cp "$STEAM_B4B/EasyAntiCheat/EasyAntiCheat_EOS_Setup.exe" "$SCRIPT_DIR/files/"
-    echo -e "${GREEN}EAC files sourced from Steam installation.${NC}"
 else
-    echo -e "${RED}Steam B4B not found!${NC}"
-    echo "This fix requires Back 4 Blood installed on Steam"
-    echo "for the Win64 EAC files. Install it and run again."
+    echo -e "${YELLOW}Steam B4B not found (not needed — bundled EAC files used).${NC}"
+fi
+
+# ── Verify bundled files ──
+if [ ! -f "$SCRIPT_DIR/files/EasyAntiCheat_EOS_Setup.exe" ]; then
+    echo -e "${RED}Missing: files/EasyAntiCheat_EOS_Setup.exe${NC}"
+    echo "Re-clone the repo: git clone https://github.com/hortelaa/xodus-b4b-fix.git"
+    exit 1
+fi
+if [ ! -f "$SCRIPT_DIR/files/runtime.conf" ]; then
+    echo -e "${RED}Missing: files/runtime.conf${NC}"
+    echo "Re-clone the repo: git clone https://github.com/hortelaa/xodus-b4b-fix.git"
     exit 1
 fi
 

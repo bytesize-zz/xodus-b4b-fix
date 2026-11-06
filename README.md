@@ -31,15 +31,14 @@ Xodus validates (GDK, 962560 bytes) ✓
 
 ## Requirements
 
-- The game installed via Xodus Nexus
-- The same game installed on Steam (for the Win64 EAC files)
-- `inotify-tools` package
+- Back 4 Blood installed via Xodus Nexus
+- `inotify-tools` package (installer handles this automatically)
 
 ## Install
 
 ```bash
-git clone https://github.com/hortelaa/xodus-eac-fix.git
-cd xodus-eac-fix
+git clone https://github.com/hortelaa/xodus-b4b-fix.git
+cd xodus-b4b-fix
 bash install.sh
 ```
 
