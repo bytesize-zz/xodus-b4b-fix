@@ -177,6 +177,46 @@ the same fixed pins apply, so it does not permit arbitrary replacement binaries.
 - No live-game online session has been verified by this test suite. The old
   `PR_PLAN.md` is historical proposal material, not evidence of runtime success.
 
+## Game updates
+
+`SUPPORTED_GDK_BUILDS` in `watcher.py` is an allowlist of reviewed input
+SHA-256 hashes. Multiple revisions can be accepted at once, but **only the
+original observed revision is currently shipped**. The tests use synthetic
+revisions; they do not establish compatibility with an actual future update.
+
+Each entry also names the exact bundled replacement EXE and runtime.conf hashes
+used for its review. Changing the bundled payload does not implicitly approve
+it for every previously reviewed input. This version ships one bundle: entries
+requiring a different bundle are refused, not automatically downloaded or selected.
+The runtime hash binds the bundled file, not a pre-existing installed runtime.conf,
+which the installer continues to preserve.
+
+When an unrecognized executable appears, the watcher leaves it untouched and
+prints its SHA-256 with a review notice. It never learns or trusts new versions
+automatically. Content-only updates that leave the checked files/IDs/layout
+unchanged do not require new entries.
+
+### Maintainer review procedure
+
+1. Record the reported input hash and independently inspect the new game/EAC
+   files and their provenance. Confirm the deployment IDs and chain layout.
+2. In an isolated test installation, assess whether the existing replacement
+   bundle still works; verify any new replacement's provenance/signature.
+   A matching filename or a new hash alone is not compatibility evidence.
+3. Add a new `SUPPORTED_GDK_BUILDS` entry with the reviewed input hash,
+   literal `replacement_sha256` and `runtime_sha256`, and a `review` note
+   describing the evidence. Retain older entries that remain supported.
+   Do not loosen the game identity, symlink, or original-file protections.
+4. Run the regression suite and document real launch/online validation separately.
+   If the bundle changes, re-review old entries rather than automatically
+   rewriting their payload hashes. Publish the reviewed code and bundled files together.
+5. Users must reinstall the helper and restart the watcher to load the update;
+   installed copies do not automatically follow changes in a source checkout.
+
+This mechanism avoids replacing the single supported input hash each time a
+reviewed revision is added. It cannot predict compatibility or eliminate the
+need to review a new game update.
+
 ## Tests (no game or bundled executable is launched)
 
 ```sh

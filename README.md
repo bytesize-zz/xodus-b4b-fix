@@ -20,7 +20,7 @@ it does not start the watcher or game. Do not run it with sudo.
 Clone this fork's hardened branch, then replace the example game path below:
 
 ```sh
-git clone --branch fix/scoped-eac-watcher https://github.com/bytesize-zz/xodus-b4b-fix.git
+git clone --branch feat/reviewed-eac-version-allowlist https://github.com/bytesize-zz/xodus-b4b-fix.git
 cd xodus-b4b-fix
 sh install.sh --game-dir '/path/to/Xodus Nexus/Back-4-Blood' --accept-bundled-files
 ```

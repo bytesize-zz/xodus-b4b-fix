@@ -30,7 +30,7 @@ class SafetyTests(unittest.TestCase):
         self.repo.mkdir()
         # The only substitution is the accepted GDK hash, allowing synthetic old
         # data without requiring an installed game. Bundle pins remain real.
-        code = (ROOT / 'watcher.py').read_text().replace(watcher.GDK_HASH, hashlib.sha256(OLD).hexdigest())
+        code = (ROOT / 'watcher.py').read_text().replace(next(iter(watcher.SUPPORTED_GDK_BUILDS)), hashlib.sha256(OLD).hexdigest())
         (self.repo / 'watcher.py').write_text(code)
         for name in ('installer.py', 'install.sh'):
             shutil.copyfile(ROOT / name, self.repo / name)
@@ -136,6 +136,43 @@ class SafetyTests(unittest.TestCase):
             w.scan(fd)
         self.assertIn('SKIP', output.getvalue())
         self.assertIn('IDs do not match', output.getvalue())
+
+    def test_multiple_reviewed_versions_and_unknown_revision(self):
+        second = b'Second synthetic reviewed GDK revision\n'
+        digest = hashlib.sha256(second).hexdigest()
+        # Add a second synthetic entry only to the isolated fixture helper.
+        code = (self.repo / 'watcher.py').read_text()
+        code = code.replace('IDS = {',
+            'SUPPORTED_GDK_BUILDS[' + repr(digest) + '] = dict(next(iter(SUPPORTED_GDK_BUILDS.values())))\nIDS = {', 1)
+        (self.repo / 'watcher.py').write_text(code)
+        first = self.make_game(self.games / '.xodus-chain-first')
+        newer = self.make_game(self.games / '.xodus-chain-second')
+        self.exe(newer).write_bytes(second)
+        unknown = self.make_game(self.games / '.xodus-chain-unknown-new')
+        unknown_bytes = b'Unreviewed future GDK revision\n'
+        self.exe(unknown).write_bytes(unknown_bytes)
+        _, log = self.start()
+        self.wait_replaced(first)
+        self.wait_replaced(newer)
+        self.assertEqual(self.exe(unknown).read_bytes(), unknown_bytes)
+        self.assertEqual(self.exe(self.game).read_bytes(), OLD)
+        time.sleep(0.2)
+        log.seek(0)
+        output = log.read().decode()
+        self.assertIn(hashlib.sha256(unknown_bytes).hexdigest(), output)
+        self.assertIn('review', output.lower())
+
+    def test_reviewed_input_is_bound_to_exact_payload(self):
+        chain = self.make_game(self.games / '.xodus-chain-wrong-payload')
+        code = (self.repo / 'watcher.py').read_text()
+        code = code.replace('IDS = {',
+            "next(iter(SUPPORTED_GDK_BUILDS.values()))['replacement_sha256'] = '0' * 64\nIDS = {", 1)
+        (self.repo / 'watcher.py').write_text(code)
+        _, log = self.start()
+        time.sleep(0.8)
+        self.assertEqual(self.exe(chain).read_bytes(), OLD)
+        log.seek(0)
+        self.assertIn('payload', log.read().decode().lower())
 
     def test_shipped_bundle_hashes(self):
         self.assertEqual(watcher.bundle(ROOT / 'files')[watcher.EXE], self.payload)

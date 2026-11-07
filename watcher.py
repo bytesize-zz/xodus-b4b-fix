@@ -15,8 +15,17 @@ import uuid
 from contextlib import contextmanager
 
 EXE = 'EasyAntiCheat_EOS_Setup.exe'
-# Observed installed GDK bootstrapper; unknown revisions fail closed.
-GDK_HASH = '2cf5f353a0bf669e7e66c93cd8e346c7b32dbc55f1c6961ce91caadfe0d9ed67'
+# Reviewed input revisions, bound to the exact tested replacement bundle.
+# Add entries only after review/testing; never auto-enroll observed hashes.
+# Keep literal output pins here so changing PINS cannot implicitly approve
+# a different payload for previously reviewed input versions.
+SUPPORTED_GDK_BUILDS = {
+    '2cf5f353a0bf669e7e66c93cd8e346c7b32dbc55f1c6961ce91caadfe0d9ed67': {
+        'replacement_sha256': '94567bf0dfcf48bfd6a2fa073e854ff6c8fb38ea114d5913dbe2c1d2554bcaae',
+        'runtime_sha256': '06f8fc9302d4636d30db3866fdccafac79bd646a51e703200caf8a325bcbf5e9',
+        'review': 'Original observed GDK build; fork owner confirmed online play.',
+    },
+}
 IDS = {'productid': '3bc138d96fb24d9597d4bbff23b9ecee',
        'sandboxid': '57dfd95548214a138218e56cd9e5b9d8',
        'deploymentid': 'e052f3c4fce741bab494ed0304eeaf62'}
@@ -257,8 +266,16 @@ class Watcher:
                         existing = read_regular(eac, EXE)
                         if existing == self.data:
                             continue
-                        if hashlib.sha256(existing).hexdigest() != GDK_HASH:
-                            raise ValueError('Unknown bootstrapper hash; refusing replacement')
+                        digest = hashlib.sha256(existing).hexdigest()
+                        build = SUPPORTED_GDK_BUILDS.get(digest)
+                        if build is None:
+                            raise ValueError(f'Unknown bootstrapper SHA-256 {digest}; '
+                                             'left unchanged. This version needs review; '
+                                             'see TECHNICAL.md (Game updates).')
+                        if (build.get('replacement_sha256') != PINS[EXE] or
+                                build.get('runtime_sha256') != PINS['runtime.conf']):
+                            raise ValueError(f'Reviewed input {digest} does not approve '
+                                             'the current bundled payload; left unchanged')
                         # Revalidate identity and location immediately before mutation.
                         identity(chain, game=self.game, chain_path=os.path.join(self.root, name))
                         live = os.stat(name, dir_fd=rootfd, follow_symlinks=False)
